@@ -1,20 +1,33 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Metamask Demo</title>
   <script type="module" src="index.js"></script>
 </head>
+
 <body>
   <h1>Metamask Demo</h1>
-  <button id="connect">Connect Metamask</button>
-  <p id="account"></p>
-  <p id="balance"></p>
+  <button id="connectButton">Connect Metamask</button>
+  <p id="accountElement">계정: </p>
+  <p id="balanceElement">잔액: </p>
   <hr>
-  <h2>ERC20 Token Balance</h2>
-  <input type="text" id="tokenAddress" placeholder="Token Contract Address" value="0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce">
-  <button id="getTokenBalance">Get Token Balance</button>
-  <p id="tokenBalance"></p>
+  <h2>ERC20 Balance</h2>
+  <input type="text" id="erc20AddressInput" placeholder="ERC20 Contract Address">
+  <button id="addErc20BalanceButton">Add ERC20 Balance</button>
+  <table id="erc20Table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Address</th>
+        <th>Balance</th>
+      </tr>
+    </thead>
+    <tbody id="erc20TableBody">
+    </tbody>
+  </table>
 </body>
+
 </html>
