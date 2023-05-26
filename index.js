@@ -1,8 +1,6 @@
 import Web3 from "https://cdn.skypack.dev/web3";
 import detectEthereumProvider from "https://cdn.skypack.dev/@metamask/detect-provider";
 
-const MAINNET_ID = "0x1";
-
 const erc20ABI = [
   {
     constant: true,
@@ -179,7 +177,8 @@ async function onClickConnectButton() {
     const balanceInEther = await getEthereumBalance(account);
     balanceElement.textContent = `balance: ${balanceInEther} ETH`;
 
-    if (await web3.eth.getChainId() === MAINNET_ID) {
+    const MAINNET_ID = 1;
+    if (chainId === MAINNET_ID) {
       topEthereumErc20InEtherscan.forEach(({ address }) =>
         getERC20TokenBalance(account, address)
           .then(({ name, tokenBalanceFormatted: balance }) =>
