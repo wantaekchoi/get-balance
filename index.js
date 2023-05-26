@@ -1,70 +1,7 @@
 import Web3 from "https://cdn.skypack.dev/web3";
 import detectEthereumProvider from "https://cdn.skypack.dev/@metamask/detect-provider";
 
-document.addEventListener('DOMContentLoaded', (event) => {
-  initUI();
-});
-
-async function initUI() {
-  const accountElement = document.getElementById("accountElement");
-  const balanceElement = document.getElementById("balanceElement");
-  const erc20AddressInput = document.getElementById("erc20AddressInput");
-  const erc20TableBody = document.getElementById("erc20TableBody");
-
-  const connectButton = document.getElementById("connectButton");
-  const addErc20BalanceButton = document.getElementById("addErc20BalanceButton");
-
-  connectButton.addEventListener("click", onClickConnectButton);
-  addErc20BalanceButton.addEventListener("click", onClickAddErc20BalanceButton);
-}
-
-async function onClickConnectButton() {
-  try {
-    await connectMetamask();
-
-    const account = await getAccount();
-    if (!account) {
-      console.error("Cannot find Ethereum account. Please check your account in Metamask.");
-      return;
-    }
-
-    accountElement.textContent = `account: ${account}`;
-
-    const balanceInEther = await getEthereumBalance(account);
-    balanceElement.textContent = `balance: ${balanceInEther} ETH`;
-
-    topEthereumErc20InEtherscan.forEach(({ address }) =>
-      getERC20TokenBalance(account, address)
-        .then(({ name, tokenBalanceFormatted: balance }) =>
-          addErc20TableRow(name, address, balance)
-        )
-        .catch((error) => console.error(`Error getting token balance for ${address}`, error))
-    );
-  } catch (error) {
-    console.error("Error connecting to Metamask:", error);
-  }
-}
-
-async function onClickAddErc20BalanceButton() {
-  try {
-    const loading = document.getElementById('loading');
-    const addErc20BalanceButton = document.getElementById("addErc20BalanceButton");
-    addErc20BalanceButton.disabled = true;
-    loading.style.display = 'block';
-
-    const account = await getAccount();
-    const erc20Address = getErc20AddressInputValue();
-
-    const { name: erc20Name, tokenBalanceFormatted: erc20Balance } = await getERC20TokenBalance(account, erc20Address);
-
-    addErc20TableRow(erc20Name, erc20Address, erc20Balance);
-  } catch (error) {
-    console.error("Error adding ERC20 balance:", error);
-  } finally {
-    addErc20BalanceButton.disabled = false;
-    loading.style.display = 'none';
-  }
-}
+const MAINNET_ID = "0x1";
 
 const erc20ABI = [
   {
@@ -194,8 +131,82 @@ const topEthereumErc20InEtherscan = [
   },
 ];
 
+let accountElement;
+let balanceElement;
+let erc20AddressInput;
+let erc20TableBody;
+let connectButton;
+let addErc20BalanceButton;
+
 let provider;
 let web3;
+
+document.addEventListener('DOMContentLoaded', (event) => {
+  initUI();
+});
+
+async function initUI() {
+  accountElement = document.getElementById("accountElement");
+  balanceElement = document.getElementById("balanceElement");
+  erc20AddressInput = document.getElementById("erc20AddressInput");
+  erc20TableBody = document.getElementById("erc20TableBody");
+
+  connectButton = document.getElementById("connectButton");
+  addErc20BalanceButton = document.getElementById("addErc20BalanceButton");
+
+  connectButton.addEventListener("click", onClickConnectButton);
+  addErc20BalanceButton.addEventListener("click", onClickAddErc20BalanceButton);
+}
+
+async function onClickConnectButton() {
+  try {
+    await connectMetamask();
+
+    const account = await getAccount();
+    if (!account) {
+      console.error("Cannot find Ethereum account. Please check your account in Metamask.");
+      return;
+    }
+
+    accountElement.textContent = `account: ${account}`;
+
+    const balanceInEther = await getEthereumBalance(account);
+    balanceElement.textContent = `balance: ${balanceInEther} ETH`;
+
+    if (await web3.eth.getChainId() === MAINNET_ID) {
+      topEthereumErc20InEtherscan.forEach(({ address }) =>
+        getERC20TokenBalance(account, address)
+          .then(({ name, tokenBalanceFormatted: balance }) =>
+            addErc20TableRow(name, address, balance)
+          )
+          .catch((error) => console.error(`Error getting token balance for ${address}`, error))
+      );
+    }
+  } catch (error) {
+    console.error("Error connecting to Metamask:", error);
+  }
+}
+
+async function onClickAddErc20BalanceButton() {
+  try {
+    const loading = document.getElementById('loading');
+    const addErc20BalanceButton = document.getElementById("addErc20BalanceButton");
+    addErc20BalanceButton.disabled = true;
+    loading.style.display = 'block';
+
+    const account = await getAccount();
+    const erc20Address = getErc20AddressInputValue();
+
+    const { name: erc20Name, tokenBalanceFormatted: erc20Balance } = await getERC20TokenBalance(account, erc20Address);
+
+    addErc20TableRow(erc20Name, erc20Address, erc20Balance);
+  } catch (error) {
+    console.error("Error adding ERC20 balance:", error);
+  } finally {
+    addErc20BalanceButton.disabled = false;
+    loading.style.display = 'none';
+  }
+}
 
 async function connectMetamask() {
   if (!provider) {
@@ -208,11 +219,6 @@ async function connectMetamask() {
 
   if (!web3) {
     web3 = new Web3(provider);
-  }
-
-  const chainId = await web3.eth.getChainId();
-  if (chainId !== MAINNET_ID) {
-    await switchToMainnet();
   }
 
   provider.on('chainChanged', handleNetworkChange);
@@ -237,23 +243,6 @@ async function getEthereumBalance(account) {
 
 function handleNetworkChange() {
   window.location.reload();
-}
-
-const MAINNET_ID = "0x1";
-
-async function switchToMainnet() {
-  try {
-    await provider.request({
-      method: 'wallet_switchEthereumChain',
-      params: [{ chainId: MAINNET_ID }],
-    });
-  } catch (switchError) {
-    if (switchError.code === 4902) {
-      console.error("Please connect to Mainnet.");
-    } else {
-      console.error(switchError);
-    }
-  }
 }
 
 async function getERC20TokenBalance(account, erc20Address) {
