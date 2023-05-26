@@ -132,6 +132,7 @@ const topEthereumErc20InEtherscan = [
 ];
 
 let accountElement;
+let chainIdElement;
 let balanceElement;
 let erc20AddressInput;
 let erc20TableBody;
@@ -147,6 +148,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
 
 async function initUI() {
   accountElement = document.getElementById("accountElement");
+  chainIdElement = document.getElementById("chainIdElement");
   balanceElement = document.getElementById("balanceElement");
   erc20AddressInput = document.getElementById("erc20AddressInput");
   erc20TableBody = document.getElementById("erc20TableBody");
@@ -169,6 +171,10 @@ async function onClickConnectButton() {
     }
 
     accountElement.textContent = `account: ${account}`;
+
+    const chainId = await getChainId();
+    chainIdElement.textContent = `chainId: ${chainId}`;
+
 
     const balanceInEther = await getEthereumBalance(account);
     balanceElement.textContent = `balance: ${balanceInEther} ETH`;
@@ -229,6 +235,15 @@ async function connectMetamask() {
 async function getAccount(index = 0) {
   const accounts = await provider.request({ method: "eth_requestAccounts" });
   return accounts[index] ?? null;
+}
+
+async function getChainId() {
+  if (!web3) {
+    console.error("Web3 is not initialized. Please connect to Metamask.");
+    return;
+  }
+
+  return await web3.eth.getChainId();
 }
 
 async function getEthereumBalance(account) {
