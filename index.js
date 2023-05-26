@@ -1,6 +1,71 @@
 import Web3 from "https://cdn.skypack.dev/web3";
 import detectEthereumProvider from "https://cdn.skypack.dev/@metamask/detect-provider";
 
+document.addEventListener('DOMContentLoaded', (event) => {
+  initUI();
+});
+
+async function initUI() {
+  const accountElement = document.getElementById("accountElement");
+  const balanceElement = document.getElementById("balanceElement");
+  const erc20AddressInput = document.getElementById("erc20AddressInput");
+  const erc20TableBody = document.getElementById("erc20TableBody");
+
+  const connectButton = document.getElementById("connectButton");
+  const addErc20BalanceButton = document.getElementById("addErc20BalanceButton");
+
+  connectButton.addEventListener("click", onClickConnectButton);
+  addErc20BalanceButton.addEventListener("click", onClickAddErc20BalanceButton);
+}
+
+async function onClickConnectButton() {
+  try {
+    await connectMetamask();
+
+    const account = await getAccount();
+    if (!account) {
+      console.error("Cannot find Ethereum account. Please check your account in Metamask.");
+      return;
+    }
+
+    accountElement.textContent = `account: ${account}`;
+
+    const balanceInEther = await getEthereumBalance(account);
+    balanceElement.textContent = `balance: ${balanceInEther} ETH`;
+
+    topEthereumErc20InEtherscan.forEach(({ address }) =>
+      getERC20TokenBalance(account, address)
+        .then(({ name, tokenBalanceFormatted: balance }) =>
+          addErc20TableRow(name, address, balance)
+        )
+        .catch((error) => console.error(`Error getting token balance for ${address}`, error))
+    );
+  } catch (error) {
+    console.error("Error connecting to Metamask:", error);
+  }
+}
+
+async function onClickAddErc20BalanceButton() {
+  try {
+    const loading = document.getElementById('loading');
+    const addErc20BalanceButton = document.getElementById("addErc20BalanceButton");
+    addErc20BalanceButton.disabled = true;
+    loading.style.display = 'block';
+
+    const account = await getAccount();
+    const erc20Address = getErc20AddressInputValue();
+
+    const { name: erc20Name, tokenBalanceFormatted: erc20Balance } = await getERC20TokenBalance(account, erc20Address);
+
+    addErc20TableRow(erc20Name, erc20Address, erc20Balance);
+  } catch (error) {
+    console.error("Error adding ERC20 balance:", error);
+  } finally {
+    addErc20BalanceButton.disabled = false;
+    loading.style.display = 'none';
+  }
+}
+
 const erc20ABI = [
   {
     constant: true,
@@ -129,15 +194,29 @@ const topEthereumErc20InEtherscan = [
   },
 ];
 
-const connectButton = document.getElementById("connectButton");
-const accountElement = document.getElementById("accountElement");
-const balanceElement = document.getElementById("balanceElement");
-const erc20AddressInput = document.getElementById("erc20AddressInput");
-const addErc20BalanceButton = document.getElementById("addErc20BalanceButton");
-const erc20TableBody = document.getElementById("erc20TableBody");
-
 let provider;
 let web3;
+
+async function connectMetamask() {
+  if (!provider) {
+    provider = await detectEthereumProvider();
+    if (!provider) {
+      console.error("Cannot find Metamask. Please install Metamask in your browser.");
+      return;
+    }
+  }
+
+  if (!web3) {
+    web3 = new Web3(provider);
+  }
+
+  const chainId = await web3.eth.getChainId();
+  if (chainId !== MAINNET_ID) {
+    await switchToMainnet();
+  }
+
+  provider.on('chainChanged', handleNetworkChange);
+}
 
 async function getAccount(index = 0) {
   const accounts = await provider.request({ method: "eth_requestAccounts" });
@@ -146,7 +225,7 @@ async function getAccount(index = 0) {
 
 async function getEthereumBalance(account) {
   if (!web3) {
-    console.error("Errro");
+    console.error("Web3 is not initialized. Please connect to Metamask.");
     return;
   }
 
@@ -156,26 +235,35 @@ async function getEthereumBalance(account) {
   return balanceInEther;
 }
 
-async function connectMetamask() {
-  provider = await detectEthereumProvider();
-  if (!provider) {
-    console.error(
-      "Metamask를 찾을 수 없습니다. 브라우저에서 Metamask를 설치해주세요."
-    );
-    return;
-  }
+function handleNetworkChange() {
+  window.location.reload();
+}
 
-  web3 = new Web3(provider);
+const MAINNET_ID = "0x1";
+
+async function switchToMainnet() {
+  try {
+    await provider.request({
+      method: 'wallet_switchEthereumChain',
+      params: [{ chainId: MAINNET_ID }],
+    });
+  } catch (switchError) {
+    if (switchError.code === 4902) {
+      console.error("Please connect to Mainnet.");
+    } else {
+      console.error(switchError);
+    }
+  }
 }
 
 async function getERC20TokenBalance(account, erc20Address) {
   if (!web3 || !account) {
-    console.error("Metamask 연결이 필요합니다. 먼저 Metamask를 연결해주세요.");
+    console.error("Metamask connection required. Please connect Metamask first.");
     return;
   }
 
   if (!web3.utils.isAddress(erc20Address)) {
-    console.error("올바른 ERC20 컨트랙트 주소를 입력해주세요.");
+    console.error("Please enter a valid ERC20 contract address.");
     return;
   }
 
@@ -189,31 +277,8 @@ async function getERC20TokenBalance(account, erc20Address) {
 
     return { name, tokenBalanceFormatted };
   } catch (error) {
-    console.error(`ERC20(${erc20Address}) 잔액 조회 중 에러 발생:`, error);
+    console.error(`Error occurred while fetching ERC20(${erc20Address}) balance:`, error);
   }
-}
-
-async function onClickConnectButton() {
-  await connectMetamask();
-
-  const account = await getAccount();
-  if (!account) {
-    console.error(
-      "이더리움 계정을 찾을 수 없습니다. Metamask에서 계정을 확인해주세요."
-    );
-    return;
-  }
-  accountElement.textContent = `계정: ${account}`;
-
-  const balanceInEther = await getEthereumBalance(account);
-  balanceElement.textContent = `잔액: ${balanceInEther} ETH`;
-
-  topEthereumErc20InEtherscan.forEach(({ address }) =>
-    getERC20TokenBalance(account, address).then(
-      ({ name, tokenBalanceFormatted: balance }) =>
-        addErc20TableRow(name, address, balance)
-    )
-  );
 }
 
 function getErc20AddressInputValue() {
@@ -231,26 +296,4 @@ function addErc20TableRow(name, address, balance) {
   balanceCell.textContent = `${balance}`;
 }
 
-async function onClickAddErc20BalanceButton() {
-  const account = await getAccount();
-  if (!account) {
-    console.error(
-      "이더리움 계정을 찾을 수 없습니다. Metamask에서 계정을 확인해주세요."
-    );
-    return;
-  }
 
-  const erc20Address = getErc20AddressInputValue();
-  if (!erc20Address) {
-    console.error("ERC20 컨트렉트 주소를 입력해주세요");
-    return;
-  }
-
-  const { name: erc20Name, tokenBalanceFormatted: erc20Balance } =
-    await getERC20TokenBalance(account, erc20Address);
-
-  addErc20TableRow(erc20Name, erc20Address, erc20Balance);
-}
-
-connectButton.addEventListener("click", onClickConnectButton);
-addErc20BalanceButton.addEventListener("click", onClickAddErc20BalanceButton);

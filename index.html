@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Metamask Demo</title>
-  <script type="module" src="index.js"></script>
+  <script type="module" src="index.js" defer></script>
 </head>
 
 <body>
@@ -16,7 +16,8 @@
   <hr>
   <h2>ERC20 Balance</h2>
   <input type="text" id="erc20AddressInput" placeholder="ERC20 Contract Address">
-  <button id="addErc20BalanceButton">Add ERC20 Balance</button>
+  <button id="addErc20BalanceButton" disabled>Add ERC20 Balance</button>
+  <div id="loading" style="display: none;">Loading...</div>
   <table id="erc20Table">
     <thead>
       <tr>
