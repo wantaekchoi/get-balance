@@ -182,6 +182,8 @@ async function onClickConnectButton() {
           .catch((error) => console.error(`Error getting token balance for ${address}`, error))
       );
     }
+
+    addErc20BalanceButton.disabled = false;
   } catch (error) {
     console.error("Error connecting to Metamask:", error);
   }
